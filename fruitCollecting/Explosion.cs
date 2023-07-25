@@ -50,7 +50,7 @@ public class Explosion
         }
 
         var explosionSize = new Vector2(GetCurrentFrame().Width, GetCurrentFrame().Height);
-        spriteBatch.Draw(_explosionTexture, _position, GetCurrentFrame(), Color.White, 0.0f, explosionSize / 2.0f, Vector2.One, SpriteEffects.None, 0);
+        spriteBatch.Draw(_explosionTexture, _position, GetCurrentFrame(), Color.White, 0.0f, explosionSize / 2.0f, Vector2.One * 5, SpriteEffects.None, 0);
     }
 
     public Rectangle GetCurrentFrame()

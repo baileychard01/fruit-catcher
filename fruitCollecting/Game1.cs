@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
 
 namespace fruitCollecting;
 
@@ -13,7 +14,10 @@ public class Game1 : Game
     private SpriteBatch _spriteBatch;
     private Texture2D _backgroundImage;
     private Texture2D _fruitBasketImage;
+    public Texture2D BombImage;
     private SoundEffect _coinSound;
+    private SoundEffect _splatSound;
+    private Song _song;
     private Vector2 _playerLocation;
     private readonly int _speed;
     private Texture2D _fruitTexture;
@@ -30,6 +34,8 @@ public class Game1 : Game
 
     private readonly Random _random = new();
 
+    private float xVelocity;
+
 
     private const int WindowWidth = 928;
     public const int WindowHeight = 793;
@@ -40,6 +46,8 @@ public class Game1 : Game
     private float _currentTimer;
     private float _spawnRate = 1f;
     private Texture2D _explosionParticleTexture;
+    private float _titleRotation;
+    private float _titleScale = 1f;
 
 
     public Game1()
@@ -54,7 +62,8 @@ public class Game1 : Game
 
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
-        _speed = 5;
+        _speed = 32;
+
     }
 
     protected override void LoadContent()
@@ -66,6 +75,12 @@ public class Game1 : Game
         _fruitBasketImage = Content.Load<Texture2D>("gamePlayer");
         _text = Content.Load<SpriteFont>("File");
         _coinSound = Content.Load<SoundEffect>("coinSound");
+        _splatSound = Content.Load<SoundEffect>("splatNoise");
+        _song = Content.Load<Song>("song");
+        MediaPlayer.IsRepeating = true;
+        MediaPlayer.Volume = 0.5f;
+        MediaPlayer.Play(_song);
+        
         _explosionParticleTexture = Content.Load<Texture2D>("explosionparticle");
 
         var explosionWidth = _explosionParticleTexture.Width / 10;
@@ -83,6 +98,9 @@ public class Game1 : Game
                 currentExplosionRect++;
             }
         }
+        var Bomb = new bomb(BombImage);
+
+        BombImage = Content.Load<Texture2D>("bomb");
         
         _fruitTexture = Content.Load<Texture2D>("gameFruit");
         var horizontalCount = _fruitTexture.Width / 16;
@@ -109,13 +127,19 @@ public class Game1 : Game
 
         if (Keyboard.GetState().IsKeyDown(Keys.D))
         {
-            _playerLocation.X += _speed;
+            xVelocity += _speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
+
         }
 
         if (Keyboard.GetState().IsKeyDown(Keys.A))
         {
-            _playerLocation.X -= _speed;
+            xVelocity -= _speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
         }
+
+        xVelocity *= 0.95f;
+        _playerLocation.X += xVelocity;
+
+        xVelocity = MathHelper.Clamp(xVelocity, -10, 10);
 
         _currentTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
@@ -147,6 +171,12 @@ public class Game1 : Game
         _fruitList.Add(fruit);
     }
 
+    private float h = 10;
+    private float s = 0;
+    private float v = 0;
+    private float targetH = 360;
+    private float scaleOffset = 0;
+    
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
@@ -155,6 +185,41 @@ public class Game1 : Game
         _spriteBatch.Begin(SpriteSortMode.Deferred, null, SamplerState.PointClamp);
 
         _spriteBatch.Draw(_backgroundImage, new Vector2(0, 0), Color.White);
+        
+        var titleText = "Bailey's Super Fruit Splat";
+        var titleSize = _text.MeasureString(titleText);
+        var rotation = (float)Math.Sin(_titleRotation * 50f) / 45.0f;
+        var scale = Math.Abs((float)Math.Sin(_titleRotation + _titleRotation / 10)) + 0.25f + scaleOffset;
+        scale = Math.Clamp(scale, 0.25f, 1f);
+        _titleRotation += (float) gameTime.ElapsedGameTime.TotalSeconds;
+
+
+        s = 1f;
+        v = 1f;
+
+        if (h >= 355f)
+        {
+            targetH = 0;
+        } else if (h <= 5f)
+        {
+            targetH = 360;
+        }
+
+        h = MathHelper.Lerp(h, targetH, (float)gameTime.ElapsedGameTime.TotalSeconds);
+        var targetColor = HsvToRgb(h, s, v);
+
+        _spriteBatch.DrawString(
+            _text, 
+            titleText, 
+            new Vector2(WindowWidth / 2f, WindowHeight / 2f - 50), 
+            targetColor * 0.5f, 
+            rotation, 
+            titleSize / 2f, 
+            Vector2.One * scale, 
+            SpriteEffects.None,
+            0
+        );
+        
         var removalList = new List<Fruit>();
         foreach (var fruit in _fruitList)
         {
@@ -169,6 +234,8 @@ public class Game1 : Game
 
                 var newExplosion = new Explosion(_explosionParticleTexture, fruit.Position, _explosionRectangles);
                 _explosionList.Add(newExplosion);
+
+                _splatSound.Play();
                 
                 // Continue cause it can't hit the floor and the player at the same time
                 continue;
@@ -215,9 +282,11 @@ public class Game1 : Game
         var stringWidth = _text.MeasureString(scoreString);
         _spriteBatch.DrawString(_text, scoreString, new Vector2(WindowWidth / 2f, 10 + stringWidth.Y),
             Color.White, 0.0f, stringWidth / 2f, new Vector2(_scoreScale, _scoreScale), SpriteEffects.None, 0f);
+        
+        //bomb.
         _spriteBatch.End();
 
-
+    
         base.Draw(gameTime);
     }
 
@@ -229,5 +298,77 @@ public class Game1 : Game
         var basketHeight = _fruitBasketImage.Height - 59;
 
         return new Rectangle((int)basketX, (int)basketY, basketWidth, basketHeight);
+    }
+    
+    private Color HsvToRgb(double h, double S, double V)
+    {
+        double H = h;
+        double R;
+        double G;
+        double B;
+        if (V <= 0.0)
+        {
+            R = (G = (B = 0.0));
+        }
+        else if (S <= 0.0)
+        {
+            R = (G = (B = V));
+        }
+        else
+        {
+            double num = H / 60.0;
+            int i = (int)Math.Floor(num);
+            double f = num - (double)i;
+            double pv = V * (1.0 - S);
+            double qv = V * (1.0 - S * f);
+            double tv = V * (1.0 - S * (1.0 - f));
+            switch (i)
+            {
+                case 0:
+                    R = V;
+                    G = tv;
+                    B = pv;
+                    break;
+                case 1:
+                    R = qv;
+                    G = V;
+                    B = pv;
+                    break;
+                case 2:
+                    R = pv;
+                    G = V;
+                    B = tv;
+                    break;
+                case 3:
+                    R = pv;
+                    G = qv;
+                    B = V;
+                    break;
+                case 4:
+                    R = tv;
+                    G = pv;
+                    B = V;
+                    break;
+                case 5:
+                    R = V;
+                    G = pv;
+                    B = qv;
+                    break;
+                case 6:
+                    R = V;
+                    G = tv;
+                    B = pv;
+                    break;
+                case -1:
+                    R = V;
+                    G = pv;
+                    B = qv;
+                    break;
+                default:
+                    R = (G = (B = V));
+                    break;
+            }
+        }
+        return new Color(MathHelper.Clamp((int)(R * 255.0), 0, 255), MathHelper.Clamp((int)(G * 255.0), 0, 255), MathHelper.Clamp((int)(B * 255.0), 0, 255));
     }
 }
