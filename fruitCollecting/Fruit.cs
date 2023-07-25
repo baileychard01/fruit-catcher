@@ -8,16 +8,18 @@ namespace fruitCollecting;
 public class Fruit
 {
     public int Score;
+    private readonly float _rotationSpeed;
     public  Vector2 Position;
 
     private readonly Texture2D _fruitTexture;
     private readonly Rectangle _rectangle;
     private readonly float _dropSpeed;
-
-
-    public Fruit(Texture2D fruitTexture, Rectangle rectangle,Vector2 position,float dropSpeed,int score)
+    private float _currentRotation;
+    
+    public Fruit(Texture2D fruitTexture, Rectangle rectangle,Vector2 position,float dropSpeed,int score, float rotationSpeed)
     {
         Score = score;
+        _rotationSpeed = rotationSpeed;
         _fruitTexture = fruitTexture;
         _rectangle = rectangle;
         Position = position;
@@ -36,6 +38,7 @@ public class Fruit
     public void Update()
     {
         Position.Y += _dropSpeed;
+        _currentRotation += _rotationSpeed;
     }
 
     public void Draw(SpriteBatch spriteBatch)
@@ -50,8 +53,8 @@ public class Fruit
             _fruitTexture,Position,
             _rectangle,
             finalColor * fadeLevel, 
-            0.0f, 
-            Vector2.Zero, 
+            _currentRotation, 
+            new Vector2(16, 16) / 2f, 
             new Vector2(GetScale(), GetScale()), // Better score fruits are smaller
             SpriteEffects.None, 
             0

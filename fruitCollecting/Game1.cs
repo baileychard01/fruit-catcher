@@ -23,7 +23,10 @@ public class Game1 : Game
     private float _scoreScale = 1f;
 
     private readonly List<Fruit> _fruitList = new();
+    private readonly List<Explosion> _explosionList = new();
+    
     private Rectangle[] _fruitRectangles;
+    private Rectangle[] _explosionRectangles;
 
     private readonly Random _random = new();
 
@@ -36,6 +39,7 @@ public class Game1 : Game
 
     private float _currentTimer;
     private float _spawnRate = 1f;
+    private Texture2D _explosionParticleTexture;
 
 
     public Game1()
@@ -62,7 +66,24 @@ public class Game1 : Game
         _fruitBasketImage = Content.Load<Texture2D>("gamePlayer");
         _text = Content.Load<SpriteFont>("File");
         _coinSound = Content.Load<SoundEffect>("coinSound");
+        _explosionParticleTexture = Content.Load<Texture2D>("explosionparticle");
 
+        var explosionWidth = _explosionParticleTexture.Width / 10;
+        var explosionHeight = _explosionParticleTexture.Height / 7;
+        var explosionHorizontalCount = _explosionParticleTexture.Width / explosionWidth;
+        var explosionVerticalCount = _explosionParticleTexture.Height / explosionHeight;
+        var currentExplosionRect = 0;
+
+        _explosionRectangles = new Rectangle[explosionHorizontalCount * explosionVerticalCount];
+        for (int i = 0; i < explosionVerticalCount; i++)
+        {
+            for (int j = 0; j < explosionHorizontalCount; j++)
+            {
+                _explosionRectangles[currentExplosionRect] = new Rectangle(j * explosionWidth, i * explosionHeight, explosionWidth, explosionHeight);
+                currentExplosionRect++;
+            }
+        }
+        
         _fruitTexture = Content.Load<Texture2D>("gameFruit");
         var horizontalCount = _fruitTexture.Width / 16;
         var verticleCount = _fruitTexture.Height / 16;
@@ -120,7 +141,8 @@ public class Game1 : Game
             _fruitRectangles[selectedRect],
             new Vector2(_random.Next(0, WindowWidth), -100),
             _random.Next(1, 5),
-            _random.Next(MinScore, MaxScore)
+            _random.Next(MinScore, MaxScore),
+            _random.Next(0, 10) / 30f
         );
         _fruitList.Add(fruit);
     }
@@ -141,11 +163,16 @@ public class Game1 : Game
 
             Vector2 fruitpos = fruit.Position;
 
-            if (fruitpos.Y > WindowHeight)
+            if (fruitpos.Y > WindowHeight - 70)
             {
                 removalList.Add(fruit);
+
+                var newExplosion = new Explosion(_explosionParticleTexture, fruit.Position, _explosionRectangles);
+                _explosionList.Add(newExplosion);
+                
+                // Continue cause it can't hit the floor and the player at the same time
+                continue;
             }
-            
 
             var fruitRectangle = fruit.GetRectangle();
 
@@ -164,6 +191,23 @@ public class Game1 : Game
         foreach (Fruit fruit in removalList)
         {
             _fruitList.Remove(fruit);
+        }
+
+        var explosionsToRemove = new List<Explosion>();
+        foreach (var explosion in _explosionList)
+        {
+            explosion.Update(gameTime);
+            explosion.Draw(_spriteBatch);
+
+            if (explosion.IsDead)
+            {
+                explosionsToRemove.Add(explosion);
+            }
+        }
+
+        foreach (var explosion in explosionsToRemove)
+        {
+            _explosionList.Remove(explosion);
         }
 
         _spriteBatch.Draw(_fruitBasketImage, new Vector2(_playerLocation.X, _playerLocation.Y), Color.White);
