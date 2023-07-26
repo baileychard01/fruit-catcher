@@ -36,6 +36,7 @@ public class Game1 : Game
 
     private float xVelocity;
 
+    private bool _paused;
 
     private const int WindowWidth = 928;
     public const int WindowHeight = 793;
@@ -49,7 +50,11 @@ public class Game1 : Game
     private float _titleRotation;
     private float _titleScale = 1f;
 
-
+    private Color currentColor = Color.White;
+    private Color targetColor = Color.White;
+    
+    private KeyboardState _lastKeyState;
+    
     public Game1()
     {
         _graphics = new GraphicsDeviceManager(this);
@@ -119,9 +124,16 @@ public class Game1 : Game
 
     protected override void Update(GameTime gameTime)
     {
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
-            Keyboard.GetState().IsKeyDown(Keys.Escape))
-            Exit();
+        if (Keyboard.GetState().IsKeyDown(Keys.Escape) && _lastKeyState.IsKeyUp(Keys.Escape))
+            _paused = !_paused;
+
+        
+        _lastKeyState = Keyboard.GetState();
+        
+        if (_paused)
+        {
+            return;
+        }
 
         if (Keyboard.GetState().IsKeyDown(Keys.D))
         {
@@ -167,8 +179,8 @@ public class Game1 : Game
                 new Rectangle(0, 0, _bombImage.Width, _bombImage.Height),
                 new Vector2(_random.Next(0, WindowWidth), -100),
                 _random.Next(1, 5),
-                -5,
-                0
+                -20,
+                0.1f
             );
             _fruitList.Add(bomb);
         }
@@ -202,6 +214,12 @@ public class Game1 : Game
         _spriteBatch.Draw(_backgroundImage, new Vector2(0, 0), Color.White);
         
         var titleText = "Bailey's Super Fruit Splat";
+
+        if (_paused)
+        {
+            titleText = "PAUSED";
+        }
+        
         var titleSize = _text.MeasureString(titleText);
         var rotation = (float)Math.Sin(_titleRotation * 50f) / 45.0f;
         var scale = Math.Abs((float)Math.Sin(_titleRotation + _titleRotation / 10)) + 0.25f + scaleOffset;
@@ -238,7 +256,12 @@ public class Game1 : Game
         var removalList = new List<FallingItem>();
         foreach (var fruit in _fruitList)
         {
-            fruit.Update();
+            if (!_paused)
+            {
+                fruit.Update();
+
+            }
+
             fruit.Draw(_spriteBatch);
 
             Vector2 fruitpos = fruit.Position;
@@ -255,6 +278,7 @@ public class Game1 : Game
                 if (fruit.Score > 0)
                 {
                     _playerScore--;   
+                    
                 }
                 else
                 {
@@ -280,6 +304,11 @@ public class Game1 : Game
                 {
                     _scoreScale = 5f;
                     _splatSound.Play();
+
+                    currentColor = Color.Red;
+                    
+                    var newExplosion = new Explosion(_explosionParticleTexture, fruit.Position, _explosionRectangles);
+                    _explosionList.Add(newExplosion);
                 }
                 else
                 {
@@ -293,6 +322,7 @@ public class Game1 : Game
 
         _playerScore = MathHelper.Clamp(_playerScore, 0, int.MaxValue);
         _scoreScale = MathHelper.Lerp(_scoreScale, _defaultScoreScale, (float)gameTime.ElapsedGameTime.TotalSeconds * 5f);
+        currentColor = Color.Lerp(currentColor, targetColor, (float)gameTime.ElapsedGameTime.TotalSeconds);
         foreach (FallingItem fruit in removalList)
         {
             _fruitList.Remove(fruit);
@@ -301,7 +331,11 @@ public class Game1 : Game
         var explosionsToRemove = new List<Explosion>();
         foreach (var explosion in _explosionList)
         {
-            explosion.Update(gameTime);
+            if (!_paused)
+            {
+                explosion.Update(gameTime);
+
+            }
             explosion.Draw(_spriteBatch);
 
             if (explosion.IsDead)
@@ -319,8 +353,9 @@ public class Game1 : Game
         var scoreString = _playerScore + "";
         var stringWidth = _text.MeasureString(scoreString);
         _spriteBatch.DrawString(_text, scoreString, new Vector2(WindowWidth / 2f, 10 + stringWidth.Y),
-            Color.White, 0.0f, stringWidth / 2f, new Vector2(_scoreScale, _scoreScale), SpriteEffects.None, 0f);
+            currentColor, 0.0f, stringWidth / 2f, new Vector2(_scoreScale, _scoreScale), SpriteEffects.None, 0f);
 
+        
         _spriteBatch.End();
 
     
