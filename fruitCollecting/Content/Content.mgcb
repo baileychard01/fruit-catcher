@@ -37,7 +37,7 @@
 /processorParam:TextureFormat=Color
 /build:Background.png
 
-#begin bomb.png
+#begin bombImage.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -47,7 +47,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:bomb.png
+/build:bombImage.png
 
 #begin coinSound.wav
 /importer:WavImporter

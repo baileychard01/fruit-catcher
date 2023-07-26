@@ -5,22 +5,22 @@ using Microsoft.Xna.Framework.Graphics;
 namespace fruitCollecting;
 
 
-public class Fruit
+public class FallingItem
 {
     public int Score;
     private readonly float _rotationSpeed;
     public  Vector2 Position;
 
-    private readonly Texture2D _fruitTexture;
+    private readonly Texture2D _texture;
     private readonly Rectangle _rectangle;
     private readonly float _dropSpeed;
     private float _currentRotation;
     
-    public Fruit(Texture2D fruitTexture, Rectangle rectangle,Vector2 position,float dropSpeed,int score, float rotationSpeed)
+    public FallingItem(Texture2D texture, Rectangle rectangle,Vector2 position,float dropSpeed,int score, float rotationSpeed)
     {
         Score = score;
         _rotationSpeed = rotationSpeed;
-        _fruitTexture = fruitTexture;
+        _texture = texture;
         _rectangle = rectangle;
         Position = position;
         _dropSpeed = dropSpeed;
@@ -28,6 +28,11 @@ public class Fruit
 
     private float GetScale()
     {
+        if (Score < 0)
+        {
+            return 1f;
+        }
+        
         return 5f / Score + 1;
     }
     public Rectangle GetRectangle()
@@ -50,7 +55,7 @@ public class Fruit
         var finalColor = Color.Lerp(Color.White, Color.White * 0.25f, invisibility);
         
         spriteBatch.Draw(
-            _fruitTexture,Position,
+            _texture,Position,
             _rectangle,
             finalColor * fadeLevel, 
             _currentRotation, 

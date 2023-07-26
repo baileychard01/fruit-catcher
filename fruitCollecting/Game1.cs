@@ -14,7 +14,7 @@ public class Game1 : Game
     private SpriteBatch _spriteBatch;
     private Texture2D _backgroundImage;
     private Texture2D _fruitBasketImage;
-    public Texture2D BombImage;
+    private Texture2D _bombImage;
     private SoundEffect _coinSound;
     private SoundEffect _splatSound;
     private Song _song;
@@ -26,7 +26,7 @@ public class Game1 : Game
     private float _defaultScoreScale = 1f;
     private float _scoreScale = 1f;
 
-    private readonly List<Fruit> _fruitList = new();
+    private readonly List<FallingItem> _fruitList = new();
     private readonly List<Explosion> _explosionList = new();
     
     private Rectangle[] _fruitRectangles;
@@ -98,10 +98,8 @@ public class Game1 : Game
                 currentExplosionRect++;
             }
         }
-        var Bomb = new bomb(BombImage);
-
-        BombImage = Content.Load<Texture2D>("bomb");
         
+        _bombImage = Content.Load<Texture2D>("bombImage");
         _fruitTexture = Content.Load<Texture2D>("gameFruit");
         var horizontalCount = _fruitTexture.Width / 16;
         var verticleCount = _fruitTexture.Height / 16;
@@ -160,15 +158,32 @@ public class Game1 : Game
     {
         var selectedRect = _random.Next(0, _fruitRectangles.Length);
 
-        var fruit = new Fruit(
-            _fruitTexture,
-            _fruitRectangles[selectedRect],
-            new Vector2(_random.Next(0, WindowWidth), -100),
-            _random.Next(1, 5),
-            _random.Next(MinScore, MaxScore),
-            _random.Next(0, 10) / 30f
-        );
-        _fruitList.Add(fruit);
+        var isBomb = _random.Next(0, 10);
+
+        if (isBomb > 8)
+        {
+            var bomb = new FallingItem(
+                _bombImage,
+                new Rectangle(0, 0, _bombImage.Width, _bombImage.Height),
+                new Vector2(_random.Next(0, WindowWidth), -100),
+                _random.Next(1, 5),
+                -5,
+                0
+            );
+            _fruitList.Add(bomb);
+        }
+        else
+        {
+            var fruit = new FallingItem(
+                _fruitTexture,
+                _fruitRectangles[selectedRect],
+                new Vector2(_random.Next(0, WindowWidth), -100),
+                _random.Next(1, 5),
+                _random.Next(MinScore, MaxScore),
+                _random.Next(0, 10) / 30f
+            );
+            _fruitList.Add(fruit);
+        }
     }
 
     private float h = 10;
@@ -176,7 +191,7 @@ public class Game1 : Game
     private float v = 0;
     private float targetH = 360;
     private float scaleOffset = 0;
-    
+
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
@@ -220,7 +235,7 @@ public class Game1 : Game
             0
         );
         
-        var removalList = new List<Fruit>();
+        var removalList = new List<FallingItem>();
         foreach (var fruit in _fruitList)
         {
             fruit.Update();
@@ -236,6 +251,17 @@ public class Game1 : Game
                 _explosionList.Add(newExplosion);
 
                 _splatSound.Play();
+
+                if (fruit.Score > 0)
+                {
+                    _playerScore--;   
+                }
+                else
+                {
+                    _playerScore += 10;
+                }
+                
+                _scoreScale = 1.5f;
                 
                 // Continue cause it can't hit the floor and the player at the same time
                 continue;
@@ -249,13 +275,25 @@ public class Game1 : Game
             {
                 removalList.Add(fruit);
                 _playerScore += fruit.Score;
-                _scoreScale = 3f;
-                _coinSound.Play();
+
+                if (fruit.Score < 0)
+                {
+                    _scoreScale = 5f;
+                    _splatSound.Play();
+                }
+                else
+                {
+                    _scoreScale = 3f;
+                    _coinSound.Play();
+                }
+                
             }
+            
         }
 
+        _playerScore = MathHelper.Clamp(_playerScore, 0, int.MaxValue);
         _scoreScale = MathHelper.Lerp(_scoreScale, _defaultScoreScale, (float)gameTime.ElapsedGameTime.TotalSeconds * 5f);
-        foreach (Fruit fruit in removalList)
+        foreach (FallingItem fruit in removalList)
         {
             _fruitList.Remove(fruit);
         }
@@ -282,8 +320,7 @@ public class Game1 : Game
         var stringWidth = _text.MeasureString(scoreString);
         _spriteBatch.DrawString(_text, scoreString, new Vector2(WindowWidth / 2f, 10 + stringWidth.Y),
             Color.White, 0.0f, stringWidth / 2f, new Vector2(_scoreScale, _scoreScale), SpriteEffects.None, 0f);
-        
-        //bomb.
+
         _spriteBatch.End();
 
     
